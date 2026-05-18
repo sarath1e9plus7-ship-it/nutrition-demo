@@ -1,17 +1,42 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { supabase } from "../lib/supabase";
 
 export default function Home() {
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<string[]>([]);
+  const [messages, setMessages] = useState([]);
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && input.trim() !== "") {
-      setMessages([...messages, input]);
-      setInput("");
+  // Load messages from database
+  async function fetchMessages() {
+    const { data, error } = await supabase
+      .from("messages")
+      .select("*")
+      .order("id", { ascending: true });
+
+    if (!error) {
+      setMessages(data);
     }
-  };
+  }
+
+  // Save message to database
+  async function addMessage() {
+    if (input.trim() === "") return;
+
+    const { error } = await supabase
+      .from("messages")
+      .insert([{ text: input }]);
+
+    if (!error) {
+      setInput("");
+      fetchMessages();
+    }
+  }
+
+  // Run when page loads
+  useEffect(() => {
+    fetchMessages();
+  }, []);
 
   return (
     <main className="min-h-screen bg-gray-100 p-10">
@@ -20,22 +45,30 @@ export default function Home() {
           Nutrition Demo App
         </h1>
 
-        <input
-          type="text"
-          placeholder="Type something..."
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          className="w-full border p-3 rounded mb-4"
-        />
+        <div className="flex gap-2 mb-4">
+          <input
+            type="text"
+            placeholder="Type something..."
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            className="w-full border p-3 rounded"
+          />
+
+          <button
+            onClick={addMessage}
+            className="bg-blue-500 text-white px-4 rounded"
+          >
+            Add
+          </button>
+        </div>
 
         <div className="space-y-2">
-          {messages.map((msg, index) => (
+          {messages.map((msg) => (
             <div
-              key={index}
+              key={msg.id}
               className="bg-blue-100 p-3 rounded"
             >
-              {msg}
+              {msg.text}
             </div>
           ))}
         </div>
